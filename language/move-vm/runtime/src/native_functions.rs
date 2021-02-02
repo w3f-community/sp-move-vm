@@ -26,7 +26,7 @@ use vm::errors::PartialVMResult;
 // returns a `NativeFunction`
 // - `dispatch` which given a `NativeFunction` invokes the native
 #[derive(Debug, Clone, Copy)]
-pub(crate) enum NativeFunction {
+pub enum NativeFunction {
     HashSha2_256,
     HashSha3_256,
     BCSToBytes,

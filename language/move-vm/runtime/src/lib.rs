@@ -16,7 +16,7 @@ extern crate alloc;
 
 pub mod data_cache;
 mod interpreter;
-mod loader;
+pub mod loader;
 pub mod logging;
 pub mod move_vm;
 mod native_functions;

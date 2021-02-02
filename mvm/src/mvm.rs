@@ -1,5 +1,8 @@
-use crate::access_path::AccessPath;
-use crate::data::{EventHandler, State, Storage, WriteEffects};
+use crate::storage::bank::Balances;
+use crate::storage::event::EventHandler;
+use crate::storage::session::{Session, Events};
+use crate::storage::store::RawData;
+use crate::storage::NodeApi;
 use crate::types::{Gas, ModuleTx, ScriptTx, VmResult};
 use crate::vm_config::loader::load_vm_config;
 use crate::Vm;
@@ -9,72 +12,72 @@ use move_core_types::gas_schedule::{AbstractMemorySize, GasAlgebra, GasUnits};
 use move_core_types::vm_status::StatusCode;
 use move_vm_runtime::data_cache::TransactionEffects;
 use move_vm_runtime::logging::NoContextLog;
-use move_vm_runtime::move_vm::MoveVM;
+use move_vm_runtime::{
+    move_vm::MoveVM,
+};
 use move_vm_types::gas_schedule::CostStrategy;
 use vm::errors::{Location, PartialVMError, VMError};
 use vm::CompiledModule;
+use crate::storage::chain::TxInfo;
+
 /// MoveVM.
-pub struct Mvm<S, E>
-where
-    S: Storage,
-    E: EventHandler,
+pub struct Mvm<S, E, B>
+    where
+        S: RawData,
+        E: EventHandler,
+        B: Balances,
 {
     vm: MoveVM,
     cost_table: CostTable,
-    state: State<S>,
-    event_handler: E,
+    node_api: NodeApi<S, E, B>,
 }
 
-impl<S, E> Mvm<S, E>
-where
-    S: Storage,
-    E: EventHandler,
+impl<S, E, B> Mvm<S, E, B>
+    where
+        S: RawData,
+        E: EventHandler,
+        B: Balances,
 {
     /// Creates a new move vm with given store and event handler.
-    pub fn new(store: S, event_handler: E) -> Result<Mvm<S, E>, Error> {
+    pub fn new(store: S, event_handler: E, bank: B) -> Result<Mvm<S, E, B>, Error> {
         let config = load_vm_config(&store)?;
 
         Ok(Mvm {
             vm: MoveVM::new(),
             cost_table: config.gas_schedule,
-            state: State::new(store),
-            event_handler,
+            node_api: NodeApi::new(store, event_handler, bank),
         })
     }
 
+    pub fn session(&self, tx_info: Option<TxInfo>) -> Session<'_, '_, S, E, B> {
+        self.node_api.new_session(self.vm.loader(), tx_info)
+    }
+
     /// Stores write set into storage and handle events.
-    fn handle_tx_effects(&self, tx_effects: TransactionEffects) -> Result<(), VMError> {
+    fn handle_tx_effects(
+        &self,
+        session: &Session<'_, '_, S, E, B>,
+        tx_effects: TransactionEffects,
+    ) -> Result<(), VMError> {
         for (addr, vals) in tx_effects.resources {
-            for (struct_tag, val_opt) in vals {
-                let ap = AccessPath::new(addr, struct_tag.access_vector());
+            for (struct_tag, ty_layout, tp, val_opt) in vals {
                 match val_opt {
                     None => {
-                        self.state.delete(ap);
+                        session.delete_resource(addr, struct_tag, ty_layout, tp)?;
                     }
-                    Some((ty_layout, val)) => {
-                        let blob = val.simple_serialize(&ty_layout).ok_or_else(|| {
-                            PartialVMError::new(StatusCode::UNKNOWN_INVARIANT_VIOLATION_ERROR)
-                                .finish(Location::Undefined)
-                        })?;
-                        self.state.insert(ap, blob);
+                    Some(val) => {
+                        session.insert_resource(addr, struct_tag, ty_layout, tp, val)?;
                     }
                 };
             }
         }
 
         for (module_id, blob) in tx_effects.modules {
-            self.state.insert(
-                AccessPath::new(*module_id.address(), module_id.access_vector()),
-                blob,
-            );
+            session.publish_module(module_id, blob);
         }
 
-        for (guid, seq_num, ty_tag, ty_layout, val) in tx_effects.events {
-            let msg = val.simple_serialize(&ty_layout).ok_or_else(|| {
-                PartialVMError::new(StatusCode::UNKNOWN_INVARIANT_VIOLATION_ERROR)
-                    .finish(Location::Undefined)
-            })?;
-            self.event_handler.on_event(guid, seq_num, ty_tag, msg);
+        for event in tx_effects.events {
+            session.write_event(event)?;
         }
 
         Ok(())
@@ -83,6 +86,7 @@ where
     /// Handle vm result and return transaction status code.
     fn handle_vm_result(
         &self,
+        state_session: &Session<'_, '_, S, E, B>,
         cost_strategy: CostStrategy,
         gas_meta: Gas,
         result: Result<TransactionEffects, VMError>,
@@ -91,7 +95,7 @@ where
             .sub(cost_strategy.remaining_gas())
             .get();
 
-        match result.and_then(|e| self.handle_tx_effects(e)) {
+        match result.and_then(|e| self.handle_tx_effects(state_session, e)) {
             Ok(_) => VmResult::new(StatusCode::EXECUTED, gas_used),
             Err(err) => {
                 //todo log error.
@@ -101,16 +105,19 @@ where
     }
 }
 
-impl<S, E> Vm for Mvm<S, E>
-where
-    S: Storage,
-    E: EventHandler,
+impl<S, E, B> Vm for Mvm<S, E, B>
+    where
+        S: RawData,
+        E: EventHandler,
+        B: Balances,
 {
     fn publish_module(&self, gas: Gas, module: ModuleTx) -> VmResult {
         let (module, sender) = module.into_inner();
 
         let mut cost_strategy =
             CostStrategy::transaction(&self.cost_table, GasUnits::new(gas.max_gas_amount()));
+
+        let state_session = self.node_api.new_session(self.vm.loader(), None);
 
         let result = cost_strategy
             .charge_intrinsic_gas(AbstractMemorySize::new(module.len() as u64))
@@ -123,13 +130,13 @@ where
                             return Err(PartialVMError::new(
                                 StatusCode::MODULE_ADDRESS_DOES_NOT_MATCH_SENDER,
                             )
-                            .finish(Location::Module(module_id)));
+                                .finish(Location::Module(module_id)));
                         }
 
                         cost_strategy
                             .charge_intrinsic_gas(AbstractMemorySize::new(module.len() as u64))?;
 
-                        let mut session = self.vm.new_session(&self.state);
+                        let mut session = self.vm.new_session(&state_session);
                         session
                             .publish_module(
                                 module.to_vec(),
@@ -140,13 +147,16 @@ where
                             .and_then(|_| session.finish())
                     })
             });
-        self.handle_vm_result(cost_strategy, gas, result)
+        self.handle_vm_result(&state_session, cost_strategy, gas, result)
     }
 
     fn execute_script(&self, gas: Gas, tx: ScriptTx) -> VmResult {
-        let mut session = self.vm.new_session(&self.state);
+        let (script, args, type_args, senders, tx_info) = tx.into_inner();
 
-        let (script, args, type_args, senders) = tx.into_inner();
+        let state_session = self.node_api.new_session(self.vm.loader(), Some(tx_info));
+
+        let mut session = self.vm.new_session(&state_session);
+
         let mut cost_strategy =
             CostStrategy::transaction(&self.cost_table, GasUnits::new(gas.max_gas_amount()));
 
@@ -161,7 +171,7 @@ where
             )
             .and_then(|_| session.finish());
 
-        self.handle_vm_result(cost_strategy, gas, result)
+        self.handle_vm_result(&state_session, cost_strategy, gas, result)
     }
 
     fn clear(&self) {

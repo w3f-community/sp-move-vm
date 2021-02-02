@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::{data_cache::RemoteCache, runtime::VMRuntime, session::Session};
+use crate::loader::Loader;
 
 pub struct MoveVM {
     runtime: VMRuntime,
@@ -30,6 +31,10 @@ impl MoveVM {
     ///     and apply the effects to the storage when the Session ends.
     pub fn new_session<'r, R: RemoteCache>(&self, remote: &'r R) -> Session<'r, '_, R> {
         self.runtime.new_session(remote)
+    }
+
+    pub fn loader(&self) -> &Loader {
+        self.runtime.loader()
     }
 
     /// Clears vm state.

@@ -5,9 +5,9 @@ extern crate alloc;
 extern crate sp_io;
 
 pub mod access_path;
-pub mod data;
 pub mod gas_schedule;
 pub mod mvm;
+pub mod storage;
 pub mod types;
 pub mod vm_config;
 

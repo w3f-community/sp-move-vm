@@ -1,3 +1,4 @@
+use crate::storage::chain::TxInfo;
 use alloc::vec::Vec;
 use anyhow::*;
 use move_core_types::account_address::AccountAddress;
@@ -83,6 +84,7 @@ pub struct ScriptTx {
     args: Vec<Value>,
     type_args: Vec<TypeTag>,
     senders: Vec<AccountAddress>,
+    tx_info: TxInfo,
 }
 
 /// Script transaction.
@@ -93,6 +95,7 @@ impl ScriptTx {
         args: Vec<ScriptArg>,
         type_args: Vec<TypeTag>,
         senders: Vec<AccountAddress>,
+        tx_info: TxInfo,
     ) -> Result<Self> {
         ensure!(
             !senders.is_empty(),
@@ -103,6 +106,7 @@ impl ScriptTx {
             args: args.into_iter().map(ScriptArg::into).collect(),
             type_args,
             senders,
+            tx_info,
         })
     }
 
@@ -117,8 +121,22 @@ impl ScriptTx {
     }
 
     /// Convert into internal data.
-    pub fn into_inner(self) -> (Vec<u8>, Vec<Value>, Vec<TypeTag>, Vec<AccountAddress>) {
-        (self.code, self.args, self.type_args, self.senders)
+    pub fn into_inner(
+        self,
+    ) -> (
+        Vec<u8>,
+        Vec<Value>,
+        Vec<TypeTag>,
+        Vec<AccountAddress>,
+        TxInfo,
+    ) {
+        (
+            self.code,
+            self.args,
+            self.type_args,
+            self.senders,
+            self.tx_info,
+        )
     }
 }
 

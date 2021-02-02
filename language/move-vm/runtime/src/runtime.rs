@@ -26,15 +26,19 @@ use vm::{
 };
 
 /// An instantiation of the MoveVM.
-pub(crate) struct VMRuntime {
+pub struct VMRuntime {
     loader: Loader,
 }
 
 impl VMRuntime {
-    pub(crate) fn new() -> Self {
+    pub fn new() -> Self {
         VMRuntime {
             loader: Loader::new(),
         }
+    }
+
+    pub fn loader(&self) -> &Loader {
+        &self.loader
     }
 
     pub fn new_session<'r, R: RemoteCache>(&self, remote: &'r R) -> Session<'r, '_, R> {
@@ -77,7 +81,7 @@ impl VMRuntime {
                 IndexKind::AddressIdentifier,
                 compiled_module.self_handle_idx().0,
             )
-            .finish(Location::Undefined));
+                .finish(Location::Undefined));
         }
 
         // Make sure that there is not already a module with this name published

@@ -12,7 +12,7 @@ pub fn convert_txn_effects_to_move_changeset_and_events(
     let mut changeset = ChangeSet::new();
 
     for (addr, resources) in txn_effects.resources {
-        for (struct_tag, val_opt) in resources {
+        for (struct_tag,tp_layout, ty, val_opt) in resources {
             match val_opt {
                 Some((layout, val)) => {
                     let blob = val

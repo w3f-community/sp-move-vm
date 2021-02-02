@@ -86,7 +86,7 @@ pub(crate) struct TransactionDataCache<'r, 'l, R> {
 pub struct TransactionEffects {
     pub resources: Vec<(
         AccountAddress,
-        Vec<(StructTag, Option<(MoveTypeLayout, Value)>)>,
+        Vec<(StructTag, MoveTypeLayout, Type, Option<Value>)>,
     )>,
     pub modules: Vec<(ModuleId, Vec<u8>)>,
     pub events: Vec<(Vec<u8>, u64, TypeTag, MoveTypeLayout, Value)>,
@@ -118,7 +118,7 @@ impl<'r, 'l, R: RemoteCache> TransactionDataCache<'r, 'l, R> {
                     GlobalValueEffect::None => (),
                     GlobalValueEffect::Deleted => {
                         if let TypeTag::Struct(s_tag) = self.loader.type_to_type_tag(&ty)? {
-                            vals.push((s_tag, None))
+                            vals.push((s_tag, ty_layout, ty, None))
                         } else {
                             // non-struct top-level value; can't happen
                             return Err(PartialVMError::new(StatusCode::INTERNAL_TYPE_ERROR));
@@ -126,7 +126,7 @@ impl<'r, 'l, R: RemoteCache> TransactionDataCache<'r, 'l, R> {
                     }
                     GlobalValueEffect::Changed(val) => {
                         if let TypeTag::Struct(s_tag) = self.loader.type_to_type_tag(&ty)? {
-                            vals.push((s_tag, Some((ty_layout, val))))
+                            vals.push((s_tag, ty_layout, ty, Some(val)))
                         } else {
                             // non-struct top-level value; can't happen
                             return Err(PartialVMError::new(StatusCode::INTERNAL_TYPE_ERROR));
