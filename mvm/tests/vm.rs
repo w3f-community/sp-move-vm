@@ -4,9 +4,7 @@ extern crate alloc;
 mod common;
 
 use move_core_types::identifier::Identifier;
-use move_core_types::language_storage::{
-    ModuleId, StructTag, TypeTag, CORE_CODE_ADDRESS,
-};
+use move_core_types::language_storage::{ModuleId, StructTag, TypeTag, CORE_CODE_ADDRESS};
 use move_core_types::vm_status::StatusCode;
 use move_vm_runtime::data_cache::RemoteCache;
 use mvm::mvm::Mvm;
@@ -16,10 +14,10 @@ use serde::Deserialize;
 
 use crate::common::BankMock;
 use common::{EventHandlerMock, StorageMock};
-use mvm::storage::chain::TxInfo;
-use mvm::storage::store::RawData;
-use mvm::storage::event::EventHandler;
 use mvm::storage::bank::Balances;
+use mvm::storage::chain::TxInfo;
+use mvm::storage::event::EventHandler;
+use mvm::storage::store::RawData;
 
 fn gas() -> Gas {
     Gas::new(10_000, 1).unwrap()
@@ -85,7 +83,7 @@ fn store_script(args: u64) -> ScriptTx {
             block_height: 0,
         },
     )
-        .unwrap()
+    .unwrap()
 }
 
 fn emit_event_script(args: u64) -> ScriptTx {
@@ -96,10 +94,15 @@ fn emit_event_script(args: u64) -> ScriptTx {
         vec![CORE_CODE_ADDRESS],
         TxInfo::default(),
     )
-        .unwrap()
+    .unwrap()
 }
 
-fn publish_module<S, E, B>(vm: &Mvm<S, E, B>, module: ModuleTx) where S: RawData, E: EventHandler, B: Balances {
+fn publish_module<S, E, B>(vm: &Mvm<S, E, B>, module: ModuleTx)
+where
+    S: RawData,
+    E: EventHandler,
+    B: Balances,
+{
     assert_eq!(
         StatusCode::EXECUTED,
         vm.publish_module(gas(), module).status_code
@@ -201,16 +204,19 @@ fn load_account_and_store_script() -> ScriptTx {
             block_height: 0,
         },
     )
-        .unwrap()
+    .unwrap()
 }
-
 
 #[test]
 fn test_balance() {
     let bank = BankMock::with_data(&[("BTC", "0x01", 0, true)]);
 
-
-    let vm = Mvm::new(StorageMock::new(), EventHandlerMock::default(), bank.clone()).unwrap();
+    let vm = Mvm::new(
+        StorageMock::new(),
+        EventHandlerMock::default(),
+        bank.clone(),
+    )
+    .unwrap();
     publish_module(&vm, signer_module());
     publish_module(&vm, dfi_module());
     publish_module(&vm, account_module());
@@ -221,7 +227,6 @@ fn test_balance() {
         vm.execute_script(gas(), load_account_and_store_script())
             .status_code
     );
-
 }
 
 // #[test]

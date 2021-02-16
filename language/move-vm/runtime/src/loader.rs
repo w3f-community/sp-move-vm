@@ -48,8 +48,8 @@ struct BinaryCache<K, V> {
 }
 
 impl<K, V> BinaryCache<K, V>
-    where
-        K: Eq + Hash,
+where
+    K: Eq + Hash,
 {
     fn new() -> Self {
         Self {
@@ -139,7 +139,6 @@ impl ModuleCache {
     fn struct_at(&self, idx: usize) -> Arc<StructType> {
         Arc::clone(&self.structs[idx])
     }
-
 
     //
     // Insertion is under lock and it's a pretty heavy operation.
@@ -312,8 +311,8 @@ impl ModuleCache {
         tok: &SignatureToken,
         resolver: &F,
     ) -> PartialVMResult<Type>
-        where
-            F: Fn(&IdentStr, &ModuleId) -> PartialVMResult<usize>,
+    where
+        F: Fn(&IdentStr, &ModuleId) -> PartialVMResult<usize>,
     {
         let res = match tok {
             SignatureToken::Bool => Type::Bool,
@@ -671,13 +670,13 @@ impl Loader {
                     module.identifier_at(mh.name).as_str(),
                     module.identifier_at(fh.name).as_str(),
                 )
-                    .ok_or_else(|| {
-                        verification_error(
-                            StatusCode::MISSING_DEPENDENCY,
-                            IndexKind::FunctionHandle,
-                            idx as TableIndex,
-                        )
-                    })?;
+                .ok_or_else(|| {
+                    verification_error(
+                        StatusCode::MISSING_DEPENDENCY,
+                        IndexKind::FunctionHandle,
+                        idx as TableIndex,
+                    )
+                })?;
             }
             // TODO: fix check and error code if we leave something around for native structs.
             // For now this generates the only error test cases care about...
@@ -978,10 +977,7 @@ impl<'a> Resolver<'a> {
         self.loader.function_at(idx)
     }
 
-    pub fn function_from_instantiation(
-        &self,
-        idx: FunctionInstantiationIndex,
-    ) -> Arc<Function> {
+    pub fn function_from_instantiation(&self, idx: FunctionInstantiationIndex) -> Arc<Function> {
         let func_inst = match &self.binary {
             BinaryType::Module(module) => module.function_instantiation_at(idx.0),
             BinaryType::Script(script) => script.function_instantiation_at(idx.0),
@@ -1006,10 +1002,7 @@ impl<'a> Resolver<'a> {
     }
 
     #[allow(clippy::unnecessary_wraps)]
-    pub fn type_params_count(
-        &self,
-        idx: FunctionInstantiationIndex,
-    ) -> PartialVMResult<usize> {
+    pub fn type_params_count(&self, idx: FunctionInstantiationIndex) -> PartialVMResult<usize> {
         let func_inst = match &self.binary {
             BinaryType::Module(module) => module.function_instantiation_at(idx.0),
             BinaryType::Script(script) => script.function_instantiation_at(idx.0),
@@ -1252,10 +1245,10 @@ impl Module {
                             return Err(PartialVMError::new(
                                 StatusCode::FUNCTION_RESOLUTION_FAILURE,
                             )
-                                .with_message(format!(
-                                    "Cannot find {:?}::{:?} in publishing module",
-                                    module_id, func_name
-                                )));
+                            .with_message(format!(
+                                "Cannot find {:?}::{:?} in publishing module",
+                                module_id, func_name
+                            )));
                         }
                         if function.name.as_ident_str() == func_name {
                             function_refs.push(idx);
@@ -1765,7 +1758,11 @@ impl TypeCache {
 const VALUE_DEPTH_MAX: usize = 256;
 
 impl Loader {
-    pub fn struct_gidx_to_type_tag(&self, gidx: usize, ty_args: &[Type]) -> PartialVMResult<StructTag> {
+    pub fn struct_gidx_to_type_tag(
+        &self,
+        gidx: usize,
+        ty_args: &[Type],
+    ) -> PartialVMResult<StructTag> {
         if let Some(struct_map) = self.type_cache.borrow().structs.get(&gidx) {
             if let Some(struct_info) = struct_map.get(ty_args) {
                 if let Some(struct_tag) = &struct_info.struct_tag {
@@ -1806,15 +1803,15 @@ impl Loader {
             TypeTag::U128 => Type::U128,
             TypeTag::Address => Type::Address,
             TypeTag::Signer => Type::Signer,
-            TypeTag::Vector(tag) => {
-                Type::Vector(Box::new(self.type_tag_to_type_impl(tag)?))
-            }
+            TypeTag::Vector(tag) => Type::Vector(Box::new(self.type_tag_to_type_impl(tag)?)),
             TypeTag::Struct(tag) => {
                 let gidx = self.struct_tag_to_struct_gidx(tag)?;
                 if tag.type_params.is_empty() {
                     Type::Struct(gidx)
                 } else {
-                    let tp_params = tag.type_params.iter()
+                    let tp_params = tag
+                        .type_params
+                        .iter()
                         .map(|tp| self.type_tag_to_type_impl(tp))
                         .collect::<PartialVMResult<Vec<_>>>()?;
                     Type::StructInstantiation(gidx, tp_params)
@@ -1883,7 +1880,11 @@ impl Loader {
         Ok(struct_layout)
     }
 
-    pub fn type_to_type_layout_impl(&self, ty: &Type, depth: usize) -> PartialVMResult<MoveTypeLayout> {
+    pub fn type_to_type_layout_impl(
+        &self,
+        ty: &Type,
+        depth: usize,
+    ) -> PartialVMResult<MoveTypeLayout> {
         if depth > VALUE_DEPTH_MAX {
             return Err(PartialVMError::new(StatusCode::VM_MAX_VALUE_DEPTH_REACHED));
         }
@@ -1914,7 +1915,9 @@ impl Loader {
 
     pub fn struct_tag_to_struct_gidx(&self, sample_tag: &StructTag) -> PartialVMResult<usize> {
         let cache = self.type_cache.borrow();
-        let types = sample_tag.type_params.iter()
+        let types = sample_tag
+            .type_params
+            .iter()
             .map(|tp| self.type_tag_to_type_impl(tp))
             .collect::<PartialVMResult<Vec<_>>>()?;
 
@@ -1981,11 +1984,7 @@ impl Loader {
         Ok(kind_info)
     }
 
-    pub fn type_to_kind_info_impl(
-        &self,
-        ty: &Type,
-        depth: usize,
-    ) -> PartialVMResult<MoveKindInfo> {
+    pub fn type_to_kind_info_impl(&self, ty: &Type, depth: usize) -> PartialVMResult<MoveKindInfo> {
         if depth > VALUE_DEPTH_MAX {
             return Err(PartialVMError::new(StatusCode::VM_MAX_VALUE_DEPTH_REACHED));
         }

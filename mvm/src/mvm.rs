@@ -1,6 +1,7 @@
 use crate::storage::bank::Balances;
+use crate::storage::chain::TxInfo;
 use crate::storage::event::EventHandler;
-use crate::storage::session::{Session, Events};
+use crate::storage::session::{Events, Session};
 use crate::storage::store::RawData;
 use crate::storage::NodeApi;
 use crate::types::{Gas, ModuleTx, ScriptTx, VmResult};
@@ -12,20 +13,17 @@ use move_core_types::gas_schedule::{AbstractMemorySize, GasAlgebra, GasUnits};
 use move_core_types::vm_status::StatusCode;
 use move_vm_runtime::data_cache::TransactionEffects;
 use move_vm_runtime::logging::NoContextLog;
-use move_vm_runtime::{
-    move_vm::MoveVM,
-};
+use move_vm_runtime::move_vm::MoveVM;
 use move_vm_types::gas_schedule::CostStrategy;
 use vm::errors::{Location, PartialVMError, VMError};
 use vm::CompiledModule;
-use crate::storage::chain::TxInfo;
 
 /// MoveVM.
 pub struct Mvm<S, E, B>
-    where
-        S: RawData,
-        E: EventHandler,
-        B: Balances,
+where
+    S: RawData,
+    E: EventHandler,
+    B: Balances,
 {
     vm: MoveVM,
     cost_table: CostTable,
@@ -33,10 +31,10 @@ pub struct Mvm<S, E, B>
 }
 
 impl<S, E, B> Mvm<S, E, B>
-    where
-        S: RawData,
-        E: EventHandler,
-        B: Balances,
+where
+    S: RawData,
+    E: EventHandler,
+    B: Balances,
 {
     /// Creates a new move vm with given store and event handler.
     pub fn new(store: S, event_handler: E, bank: B) -> Result<Mvm<S, E, B>, Error> {
@@ -106,10 +104,10 @@ impl<S, E, B> Mvm<S, E, B>
 }
 
 impl<S, E, B> Vm for Mvm<S, E, B>
-    where
-        S: RawData,
-        E: EventHandler,
-        B: Balances,
+where
+    S: RawData,
+    E: EventHandler,
+    B: Balances,
 {
     fn publish_module(&self, gas: Gas, module: ModuleTx) -> VmResult {
         let (module, sender) = module.into_inner();
@@ -130,7 +128,7 @@ impl<S, E, B> Vm for Mvm<S, E, B>
                             return Err(PartialVMError::new(
                                 StatusCode::MODULE_ADDRESS_DOES_NOT_MATCH_SENDER,
                             )
-                                .finish(Location::Module(module_id)));
+                            .finish(Location::Module(module_id)));
                         }
 
                         cost_strategy

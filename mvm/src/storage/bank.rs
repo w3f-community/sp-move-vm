@@ -1,27 +1,25 @@
-use move_core_types::account_address::AccountAddress;
 use crate::storage::session::{Resolve, ResolverResult};
-use move_core_types::language_storage::{StructTag, CORE_CODE_ADDRESS, TypeTag};
-use diem_crypto::Lazy;
-use move_core_types::identifier::Identifier;
-use vm::errors::{PartialVMError, VMError, Location};
-use move_core_types::vm_status::StatusCode;
-use move_core_types::language_storage::TypeTag::Struct;
-use core::ops::Deref;
 use core::cell::RefCell;
+use core::ops::Deref;
+use diem_crypto::Lazy;
 use hashbrown::HashMap;
+use move_core_types::account_address::AccountAddress;
+use move_core_types::identifier::Identifier;
+use move_core_types::language_storage::TypeTag::Struct;
+use move_core_types::language_storage::{StructTag, TypeTag, CORE_CODE_ADDRESS};
 use move_core_types::value::MoveTypeLayout;
-use move_vm_types::values::{Value, ValueImpl, Container};
-use move_vm_types::loaded_data::runtime_types::{Type, StructType};
+use move_core_types::vm_status::StatusCode;
 use move_vm_runtime::loader::Loader;
+use move_vm_types::loaded_data::runtime_types::{StructType, Type};
+use move_vm_types::values::{Container, Value, ValueImpl};
 use std::rc::Rc;
+use vm::errors::{Location, PartialVMError, VMError};
 
 pub static ACCOUNT_MODULE: Lazy<Identifier> = Lazy::new(|| Identifier::new("Account").unwrap());
 pub static BALANCE_STRUCT: Lazy<Identifier> = Lazy::new(|| Identifier::new("Balance").unwrap());
 
-
 pub static DFI_MODULE: Lazy<Identifier> = Lazy::new(|| Identifier::new("Dfinance").unwrap());
 pub static T_STRUCT: Lazy<Identifier> = Lazy::new(|| Identifier::new("T").unwrap());
-
 
 #[derive(Debug, Clone)]
 pub struct Account {
@@ -44,13 +42,17 @@ pub trait Balances {
 }
 
 pub struct Bank<B>
-    where
-        B: Balances {
+where
+    B: Balances,
+{
     cache: BalanceHandlerCache,
     bank: B,
 }
 
-impl<B> Bank<B> where B: Balances {
+impl<B> Bank<B>
+where
+    B: Balances,
+{
     pub fn new(bank: B) -> Bank<B> {
         Bank {
             cache: Default::default(),
@@ -64,8 +66,8 @@ impl<B> Bank<B> where B: Balances {
 }
 
 pub struct BankSession<'a, 't, B>
-    where
-        B: Balances,
+where
+    B: Balances,
 {
     bank: &'a Bank<B>,
     balances: RefCell<HashMap<AccountAddress, HashMap<String, Account>>>,
@@ -73,22 +75,40 @@ pub struct BankSession<'a, 't, B>
 }
 
 impl<B> BankSession<'_, '_, B>
-    where
-        B: Balances,
+where
+    B: Balances,
 {
     fn new<'a, 't>(bank: &'a Bank<B>, loader: &'t Loader) -> BankSession<'a, 't, B> {
-        BankSession { bank, balances: RefCell::new(Default::default()), type_viewer: TypeWalker::new(loader) }
+        BankSession {
+            bank,
+            balances: RefCell::new(Default::default()),
+            type_viewer: TypeWalker::new(loader),
+        }
     }
 
-    fn make_handlers(&self, tag: &StructTag, tp: &Type) -> Result<Option<Rc<BalanceHandler>>, VMError> {
-        Ok(if let Some(handler) = &self.bank.cache.get_balance_handler(tag) {
-            handler.clone()
-        } else {
-            self.bank.cache.store_balance_handler(tag, self.type_viewer.find_balance(tag, tp)?)
-        })
+    fn make_handlers(
+        &self,
+        tag: &StructTag,
+        tp: &Type,
+    ) -> Result<Option<Rc<BalanceHandler>>, VMError> {
+        Ok(
+            if let Some(handler) = &self.bank.cache.get_balance_handler(tag) {
+                handler.clone()
+            } else {
+                self.bank
+                    .cache
+                    .store_balance_handler(tag, self.type_viewer.find_balance(tag, tp)?)
+            },
+        )
     }
 
-    pub fn handle_delete_balance(&self, address: &AccountAddress, tag: &StructTag, ty: &MoveTypeLayout, tp: Type) -> Result<bool, VMError> {
+    pub fn handle_delete_balance(
+        &self,
+        address: &AccountAddress,
+        tag: &StructTag,
+        ty: &MoveTypeLayout,
+        tp: Type,
+    ) -> Result<bool, VMError> {
         if let Some(handler) = self.make_handlers(tag, &tp)? {
             Ok(handler.is_unlocked())
         } else {
@@ -96,7 +116,14 @@ impl<B> BankSession<'_, '_, B>
         }
     }
 
-    pub fn handle_insert_balance(&self, address: &AccountAddress, tag: &StructTag, ty: &MoveTypeLayout, tp: Type, value: &Value) -> Result<bool, VMError> {
+    pub fn handle_insert_balance(
+        &self,
+        address: &AccountAddress,
+        tag: &StructTag,
+        ty: &MoveTypeLayout,
+        tp: Type,
+        value: &Value,
+    ) -> Result<bool, VMError> {
         if let Some(handler) = self.make_handlers(tag, &tp)? {
             dbg!(handler.resolve_balance(&value.0)?);
             Ok(handler.is_unlocked())
@@ -110,20 +137,17 @@ fn is_balance(tag: &StructTag) -> bool {
     if tag.address == CORE_CODE_ADDRESS
         && &tag.module == ACCOUNT_MODULE.deref()
         && &tag.name == BALANCE_STRUCT.deref()
-        && tag.type_params.len() == 1 {
+        && tag.type_params.len() == 1
+    {
         match &tag.type_params[0] {
-            TypeTag::Bool |
-            TypeTag::U8 |
-            TypeTag::U64 |
-            TypeTag::U128 |
-            TypeTag::Address |
-            TypeTag::Signer |
-            TypeTag::Vector(_) => {
-                false
-            }
-            Struct(tag) => {
-                tag.address == CORE_CODE_ADDRESS && &tag.module == DFI_MODULE.deref()
-            }
+            TypeTag::Bool
+            | TypeTag::U8
+            | TypeTag::U64
+            | TypeTag::U128
+            | TypeTag::Address
+            | TypeTag::Signer
+            | TypeTag::Vector(_) => false,
+            Struct(tag) => tag.address == CORE_CODE_ADDRESS && &tag.module == DFI_MODULE.deref(),
         }
     } else {
         false
@@ -131,22 +155,30 @@ fn is_balance(tag: &StructTag) -> bool {
 }
 
 fn is_coin(tp: &StructType) -> bool {
-    tp.module.address() == &CORE_CODE_ADDRESS && tp.module.name() == DFI_MODULE.as_ref() && &tp.name == T_STRUCT.deref()
+    tp.module.address() == &CORE_CODE_ADDRESS
+        && tp.module.name() == DFI_MODULE.as_ref()
+        && &tp.name == T_STRUCT.deref()
 }
 
-impl<B> Resolve for BankSession<'_, '_, B> where B: Balances {
+impl<B> Resolve for BankSession<'_, '_, B>
+where
+    B: Balances,
+{
     fn resolve(&self, address: &AccountAddress, tag: &StructTag) -> ResolverResult {
         if is_balance(tag) {
             let ticker = match tag.type_params.get(0) {
                 Some(Struct(tag)) => tag.name.as_str(),
                 _ => {
-                    return ResolverResult::Resolved(Err(PartialVMError::new(StatusCode::INTERNAL_TYPE_ERROR)));
+                    return ResolverResult::Resolved(Err(PartialVMError::new(
+                        StatusCode::INTERNAL_TYPE_ERROR,
+                    )));
                 }
             };
 
             {
                 let balances = self.balances.borrow();
-                let balance = balances.get(address)
+                let balance = balances
+                    .get(address)
                     .and_then(|map| map.get(ticker))
                     .map(|acc| acc.amount.to_le_bytes().to_vec());
                 if let Some(balance) = balance {
@@ -179,17 +211,20 @@ pub struct TypeWalker<'a> {
 
 impl<'a> TypeWalker<'a> {
     pub fn new(loader: &'a Loader) -> TypeWalker<'a> {
-        TypeWalker {
-            loader
-        }
+        TypeWalker { loader }
     }
 
-    pub fn find_balance(&self, tag: &StructTag, tp: &Type) -> Result<Option<BalanceHandler>, VMError> {
+    pub fn find_balance(
+        &self,
+        tag: &StructTag,
+        tp: &Type,
+    ) -> Result<Option<BalanceHandler>, VMError> {
         Ok(if is_balance(tag) {
             let ticker = match tag.type_params.get(0) {
                 Some(Struct(tag)) => tag.name.as_str(),
                 _ => {
-                    return Err(PartialVMError::new(StatusCode::INTERNAL_TYPE_ERROR).finish(Location::Undefined));
+                    return Err(PartialVMError::new(StatusCode::INTERNAL_TYPE_ERROR)
+                        .finish(Location::Undefined));
                 }
             };
             Some(BalanceHandler::Unlocked(Rc::new(ticker.to_owned())))
@@ -218,7 +253,10 @@ impl<'a> TypeWalker<'a> {
                 return res;
             }
             Type::StructInstantiation(index, tp_params) => {
-                let inner_tp_tags = self.loader.struct_gidx_to_type_tag(*index, tp_params).ok()
+                let inner_tp_tags = self
+                    .loader
+                    .struct_gidx_to_type_tag(*index, tp_params)
+                    .ok()
                     .map(|st| st.type_params);
 
                 let struct_tp = self.loader.struct_at(*index);
@@ -228,16 +266,10 @@ impl<'a> TypeWalker<'a> {
                             let struct_tp = self.loader.struct_at(*index);
                             struct_tp.name.as_str().to_owned()
                         }
-                        Type::TyParam(index) => {
-                            match &tp_tags[*index] {
-                                TypeTag::Struct(st) => {
-                                    st.name.as_str().to_owned()
-                                }
-                                _ => {
-                                    "_".to_owned()
-                                }
-                            }
-                        }
+                        Type::TyParam(index) => match &tp_tags[*index] {
+                            TypeTag::Struct(st) => st.name.as_str().to_owned(),
+                            _ => "_".to_owned(),
+                        },
                         Type::Bool => "bool".to_owned(),
                         Type::U8 => "u8".to_owned(),
                         Type::U64 => "u64".to_owned(),
@@ -257,12 +289,8 @@ impl<'a> TypeWalker<'a> {
                     let mut res = vec![];
                     for (index, field) in struct_tp.fields.iter().enumerate() {
                         let field = match inner_tp_tags.as_ref() {
-                            Some(tp_tags) => {
-                                self.find_in_type(field, tp_tags)
-                            }
-                            None => {
-                                self.find_in_type(field, tp_tags)
-                            }
+                            Some(tp_tags) => self.find_in_type(field, tp_tags),
+                            None => self.find_in_type(field, tp_tags),
                         };
 
                         for (ticker, mut path) in field {
@@ -273,22 +301,19 @@ impl<'a> TypeWalker<'a> {
                     res
                 };
             }
-            Type::TyParam(index) => {
-                match &tp_tags[*index] {
-                    TypeTag::Struct(st) => {
-                        if let Some(gidx) = self.loader.struct_tag_to_struct_gidx(st).ok() {
-                            return self.find_in_type(&Type::Struct(gidx), st.type_params.as_ref());
-                        }
+            Type::TyParam(index) => match &tp_tags[*index] {
+                TypeTag::Struct(st) => {
+                    if let Some(gidx) = self.loader.struct_tag_to_struct_gidx(st).ok() {
+                        return self.find_in_type(&Type::Struct(gidx), st.type_params.as_ref());
                     }
-                    _ => {}
                 }
-            }
+                _ => {}
+            },
             _ => {}
         }
         vec![]
     }
 }
-
 
 #[derive(Debug)]
 pub enum BalanceHandler {
@@ -310,28 +335,28 @@ impl BalanceHandler {
                 let mut balances = vec![];
 
                 for (ticker, path) in tickers {
-                    balances.extend(Self::load_value(path, val)?
-                        .into_iter()
-                        .map(|balance| Balance {
-                            ticker: ticker.clone(),
-                            balance,
-                            locked: true,
-                        })
-                        .collect::<Vec<_>>());
+                    balances.extend(
+                        Self::load_value(path, val)?
+                            .into_iter()
+                            .map(|balance| Balance {
+                                ticker: ticker.clone(),
+                                balance,
+                                locked: true,
+                            })
+                            .collect::<Vec<_>>(),
+                    );
                 }
 
                 Ok(balances)
             }
-            BalanceHandler::Unlocked(ticker) => {
-                Ok(Self::load_value(&[0, 0], val)?
-                    .into_iter()
-                    .map(|balance| Balance {
-                        ticker: ticker.clone(),
-                        balance,
-                        locked: false,
-                    })
-                    .collect::<Vec<_>>())
-            }
+            BalanceHandler::Unlocked(ticker) => Ok(Self::load_value(&[0, 0], val)?
+                .into_iter()
+                .map(|balance| Balance {
+                    ticker: ticker.clone(),
+                    balance,
+                    locked: false,
+                })
+                .collect::<Vec<_>>()),
         }
     }
 
@@ -364,13 +389,11 @@ impl BalanceHandler {
                 let val = &vals.borrow()[path[0]];
                 Self::load_value(&path[1..], val)
             }
-            Container::VecU8(_) |
-            Container::VecU64(_) |
-            Container::VecU128(_) |
-            Container::VecBool(_) |
-            Container::VecAddress(_) => {
-                Err(type_err())
-            }
+            Container::VecU8(_)
+            | Container::VecU64(_)
+            | Container::VecU128(_)
+            | Container::VecBool(_)
+            | Container::VecAddress(_) => Err(type_err()),
         }
     }
 
@@ -383,18 +406,14 @@ impl BalanceHandler {
                     Ok(vec![*val])
                 }
             }
-            ValueImpl::Container(cr) => {
-                Self::container(path, cr)
-            }
-            ValueImpl::ContainerRef(rf) => {
-                Self::container(path, rf.container())
-            }
-            ValueImpl::IndexedRef(rf) => {
-                Self::container(path, rf.container_ref.container())
-            }
-            ValueImpl::Address(_) | ValueImpl::Bool(_) | ValueImpl::U8(_) | ValueImpl::U64(_) | ValueImpl::Invalid => {
-                Err(type_err())
-            }
+            ValueImpl::Container(cr) => Self::container(path, cr),
+            ValueImpl::ContainerRef(rf) => Self::container(path, rf.container()),
+            ValueImpl::IndexedRef(rf) => Self::container(path, rf.container_ref.container()),
+            ValueImpl::Address(_)
+            | ValueImpl::Bool(_)
+            | ValueImpl::U8(_)
+            | ValueImpl::U64(_)
+            | ValueImpl::Invalid => Err(type_err()),
         }
     }
 }
@@ -417,7 +436,7 @@ pub struct BalanceHandlerCache {
 impl BalanceHandlerCache {
     pub fn new() -> BalanceHandlerCache {
         BalanceHandlerCache {
-            cache: RefCell::new(Default::default())
+            cache: RefCell::new(Default::default()),
         }
     }
 
@@ -425,7 +444,11 @@ impl BalanceHandlerCache {
         self.cache.borrow().get(tag).map(|rf| rf.clone())
     }
 
-    pub fn store_balance_handler(&self, tag: &StructTag, handlers: Option<BalanceHandler>) -> Option<Rc<BalanceHandler>> {
+    pub fn store_balance_handler(
+        &self,
+        tag: &StructTag,
+        handlers: Option<BalanceHandler>,
+    ) -> Option<Rc<BalanceHandler>> {
         match handlers {
             None => {
                 self.cache.borrow_mut().insert(tag.clone(), None);
@@ -433,7 +456,9 @@ impl BalanceHandlerCache {
             }
             Some(handlers) => {
                 let handlers = Rc::new(handlers);
-                self.cache.borrow_mut().insert(tag.clone(), Some(handlers.clone()));
+                self.cache
+                    .borrow_mut()
+                    .insert(tag.clone(), Some(handlers.clone()));
                 Some(handlers)
             }
         }

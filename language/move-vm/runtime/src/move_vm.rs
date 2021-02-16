@@ -1,8 +1,8 @@
 // Copyright (c) The Diem Core Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-use crate::{data_cache::RemoteCache, runtime::VMRuntime, session::Session};
 use crate::loader::Loader;
+use crate::{data_cache::RemoteCache, runtime::VMRuntime, session::Session};
 
 pub struct MoveVM {
     runtime: VMRuntime,

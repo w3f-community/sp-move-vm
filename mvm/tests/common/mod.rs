@@ -1,13 +1,13 @@
 use core::cell::RefCell;
 use move_core_types::account_address::AccountAddress;
+use move_core_types::identifier::Identifier;
 use move_core_types::language_storage::TypeTag;
+use mvm::storage::bank::{Account, Balances};
+use mvm::storage::event::EventHandler;
+use mvm::storage::store::RawData;
 use std::collections::HashMap;
 use std::rc::Rc;
 use std::sync::{Arc, Mutex};
-use mvm::storage::event::EventHandler;
-use mvm::storage::store::RawData;
-use mvm::storage::bank::{Account, Balances};
-use move_core_types::identifier::Identifier;
 
 #[derive(Clone)]
 pub struct StorageMock {

@@ -1,29 +1,23 @@
-use move_core_types::{
-    language_storage::CORE_CODE_ADDRESS,
-    identifier::Identifier,
-};
-use diem_crypto::Lazy;
 use crate::storage::session::{Resolve, ResolverResult};
-use move_core_types::language_storage::StructTag;
-use move_core_types::account_address::AccountAddress;
 use core::ops::Deref;
+use diem_crypto::Lazy;
+use move_core_types::account_address::AccountAddress;
+use move_core_types::language_storage::StructTag;
+use move_core_types::{identifier::Identifier, language_storage::CORE_CODE_ADDRESS};
 
-pub static TIMESTAMP_MODULE: Lazy<StructTag> =
-    Lazy::new(|| StructTag {
-        address: CORE_CODE_ADDRESS,
-        module: Identifier::new("Timestamp").unwrap(),
-        name: Identifier::new("CurrentTimeMicroseconds").unwrap(),
-        type_params: vec![],
-    });
+pub static TIMESTAMP_MODULE: Lazy<StructTag> = Lazy::new(|| StructTag {
+    address: CORE_CODE_ADDRESS,
+    module: Identifier::new("Timestamp").unwrap(),
+    name: Identifier::new("CurrentTimeMicroseconds").unwrap(),
+    type_params: vec![],
+});
 
-pub static BLOCK_MODULE: Lazy<StructTag> =
-    Lazy::new(|| StructTag {
-        address: CORE_CODE_ADDRESS,
-        module: Identifier::new("Block").unwrap(),
-        name: Identifier::new("BlockMetadata").unwrap(),
-        type_params: vec![],
-    });
-
+pub static BLOCK_MODULE: Lazy<StructTag> = Lazy::new(|| StructTag {
+    address: CORE_CODE_ADDRESS,
+    module: Identifier::new("Block").unwrap(),
+    name: Identifier::new("BlockMetadata").unwrap(),
+    type_params: vec![],
+});
 
 #[derive(Debug, Default)]
 pub struct TxInfo {

@@ -12,10 +12,10 @@ pub mod session;
 pub mod store;
 
 pub struct NodeApi<S, E, B>
-    where
-        S: RawData,
-        E: EventHandler,
-        B: Balances,
+where
+    S: RawData,
+    E: EventHandler,
+    B: Balances,
 {
     data_access: DataAccess<S>,
     event_writer: EventWriter<E>,
@@ -23,10 +23,10 @@ pub struct NodeApi<S, E, B>
 }
 
 impl<S, E, B> NodeApi<S, E, B>
-    where
-        S: RawData,
-        E: EventHandler,
-        B: Balances,
+where
+    S: RawData,
+    E: EventHandler,
+    B: Balances,
 {
     pub fn new(raw_data: S, event_handler: E, balances: B) -> NodeApi<S, E, B> {
         NodeApi {
@@ -36,7 +36,11 @@ impl<S, E, B> NodeApi<S, E, B>
         }
     }
 
-    pub fn new_session<'a, 't>(&'a self, loader: &'t Loader, tx_info: Option<TxInfo>) -> Session<'a, 't, S, E, B> {
+    pub fn new_session<'a, 't>(
+        &'a self,
+        loader: &'t Loader,
+        tx_info: Option<TxInfo>,
+    ) -> Session<'a, 't, S, E, B> {
         Session::new(
             &self.data_access,
             self.bank.new_session(loader),
