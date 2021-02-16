@@ -698,7 +698,7 @@ impl Loader {
     // Helpers for loading and verification
     //
 
-    fn load_type(
+    pub fn load_type(
         &self,
         type_tag: &TypeTag,
         data_store: &mut impl DataStore,
@@ -755,7 +755,7 @@ impl Loader {
     // So when publishing modules through the dependency DAG it may happen that a different
     // thread had loaded the module after this process fetched it from storage.
     // Caching will take care of that by asking for each dependency module again under lock.
-    fn load_module(
+    pub fn load_module(
         &self,
         id: &ModuleId,
         data_store: &mut impl DataStore,

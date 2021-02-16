@@ -1,13 +1,23 @@
 use core::cell::RefCell;
 use move_core_types::account_address::AccountAddress;
 use move_core_types::identifier::Identifier;
-use move_core_types::language_storage::TypeTag;
+use move_core_types::language_storage::{TypeTag, ModuleId};
 use mvm::storage::bank::{Account, Balances};
 use mvm::storage::event::EventHandler;
 use mvm::storage::store::RawData;
 use std::collections::HashMap;
 use std::rc::Rc;
 use std::sync::{Arc, Mutex};
+
+mod modules;
+
+pub use modules::*;
+use move_vm_types::data_store::DataStore;
+use move_vm_types::loaded_data::runtime_types::Type;
+use vm::errors::{VMResult, PartialVMResult, Location};
+use move_vm_types::values::{Value, GlobalValue};
+use move_vm_types::natives::function::PartialVMError;
+use move_core_types::vm_status::StatusCode;
 
 #[derive(Clone)]
 pub struct StorageMock {
@@ -139,4 +149,47 @@ pub fn addr(addr: &str) -> AccountAddress {
 
 pub fn ident(ident: &str) -> Identifier {
     Identifier::new(ident).unwrap()
+}
+
+pub fn module_id(adr: &str, id: &str) -> ModuleId {
+    ModuleId::new(addr(adr), ident(id))
+}
+
+pub struct DSMock {
+    modules: HashMap<ModuleId, Vec<u8>>,
+}
+
+impl Default for DSMock {
+    fn default() -> Self {
+        DSMock {
+            modules: Default::default()
+        }
+    }
+}
+
+impl DataStore for DSMock {
+    fn load_resource(&mut self, addr: AccountAddress, ty: &Type) -> PartialVMResult<&mut GlobalValue> {
+        unimplemented!()
+    }
+
+    fn load_module(&self, module_id: &ModuleId) -> VMResult<Vec<u8>> {
+        self.modules.get(module_id)
+            .cloned()
+            .ok_or_else(|| PartialVMError::new(StatusCode::LINKER_ERROR)
+                .with_message(format!("Cannot find {:?} in data cache", module_id))
+                .finish(Location::Undefined))
+    }
+
+    fn publish_module(&mut self, module_id: &ModuleId, blob: Vec<u8>) -> VMResult<()> {
+        self.modules.insert(module_id.to_owned(), blob);
+        Ok(())
+    }
+
+    fn exists_module(&self, module_id: &ModuleId) -> VMResult<bool> {
+        Ok(self.modules.contains_key(module_id))
+    }
+
+    fn emit_event(&mut self, guid: Vec<u8>, seq_num: u64, ty: Type, val: Value) -> PartialVMResult<()> {
+        unimplemented!()
+    }
 }

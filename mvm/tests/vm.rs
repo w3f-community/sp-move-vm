@@ -2,6 +2,7 @@
 extern crate alloc;
 
 mod common;
+use crate::common::*;
 
 use move_core_types::identifier::Identifier;
 use move_core_types::language_storage::{ModuleId, StructTag, TypeTag, CORE_CODE_ADDRESS};
@@ -11,9 +12,6 @@ use mvm::mvm::Mvm;
 use mvm::types::{Gas, ModuleTx, ScriptArg, ScriptTx};
 use mvm::Vm;
 use serde::Deserialize;
-
-use crate::common::BankMock;
-use common::{EventHandlerMock, StorageMock};
 use mvm::storage::bank::Balances;
 use mvm::storage::chain::TxInfo;
 use mvm::storage::event::EventHandler;
@@ -21,55 +19,6 @@ use mvm::storage::store::RawData;
 
 fn gas() -> Gas {
     Gas::new(10_000, 1).unwrap()
-}
-
-fn store_module() -> ModuleTx {
-    ModuleTx::new(
-        include_bytes!("assets/target/modules/2_Store.mv").to_vec(),
-        CORE_CODE_ADDRESS,
-    )
-}
-
-fn event_module() -> ModuleTx {
-    ModuleTx::new(
-        include_bytes!("assets/target/modules/0_Event.mv").to_vec(),
-        CORE_CODE_ADDRESS,
-    )
-}
-
-fn vector_module() -> ModuleTx {
-    ModuleTx::new(
-        include_bytes!("assets/target/modules/3_Vector.mv").to_vec(),
-        CORE_CODE_ADDRESS,
-    )
-}
-
-fn signer_module() -> ModuleTx {
-    ModuleTx::new(
-        include_bytes!("assets/target/modules/1_Signer.mv").to_vec(),
-        CORE_CODE_ADDRESS,
-    )
-}
-
-fn dfi_module() -> ModuleTx {
-    ModuleTx::new(
-        include_bytes!("assets/target/modules/4_Dfinance.mv").to_vec(),
-        CORE_CODE_ADDRESS,
-    )
-}
-
-fn account_module() -> ModuleTx {
-    ModuleTx::new(
-        include_bytes!("assets/target/modules/5_Account.mv").to_vec(),
-        CORE_CODE_ADDRESS,
-    )
-}
-
-fn call_module() -> ModuleTx {
-    ModuleTx::new(
-        include_bytes!("assets/target/modules/6_Call.mv").to_vec(),
-        CORE_CODE_ADDRESS,
-    )
 }
 
 fn store_script(args: u64) -> ScriptTx {

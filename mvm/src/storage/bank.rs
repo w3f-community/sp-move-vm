@@ -239,7 +239,7 @@ impl<'a> TypeWalker<'a> {
     }
 
     fn find_in_type(&self, tp: &Type, tp_tags: &[TypeTag]) -> Vec<(Rc<String>, Vec<usize>)> {
-        match tp {
+        match dbg!(tp) {
             Type::Vector(tp) => return self.find_in_type(tp, tp_tags),
             Type::Struct(index) => {
                 let struct_tp = self.loader.struct_at(*index);
@@ -315,7 +315,7 @@ impl<'a> TypeWalker<'a> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialOrd, PartialEq)]
 pub enum BalanceHandler {
     Locked(Vec<(Rc<String>, Vec<usize>)>),
     Unlocked(Rc<String>),
