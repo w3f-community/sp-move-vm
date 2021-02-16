@@ -90,7 +90,6 @@ impl<B> BankSession<'_, '_, B>
 
     pub fn handle_delete_balance(&self, address: &AccountAddress, tag: &StructTag, ty: &MoveTypeLayout, tp: Type) -> Result<bool, VMError> {
         if let Some(handler) = self.make_handlers(tag, &tp)? {
-
             Ok(handler.is_unlocked())
         } else {
             Ok(false)
@@ -108,7 +107,27 @@ impl<B> BankSession<'_, '_, B>
 }
 
 fn is_balance(tag: &StructTag) -> bool {
-    tag.address == CORE_CODE_ADDRESS && &tag.module == ACCOUNT_MODULE.deref() && &tag.name == BALANCE_STRUCT.deref()
+    if tag.address == CORE_CODE_ADDRESS
+        && &tag.module == ACCOUNT_MODULE.deref()
+        && &tag.name == BALANCE_STRUCT.deref()
+        && tag.type_params.len() == 1 {
+        match &tag.type_params[0] {
+            TypeTag::Bool |
+            TypeTag::U8 |
+            TypeTag::U64 |
+            TypeTag::U128 |
+            TypeTag::Address |
+            TypeTag::Signer |
+            TypeTag::Vector(_) => {
+                false
+            }
+            Struct(tag) => {
+                tag.address == CORE_CODE_ADDRESS && &tag.module == DFI_MODULE.deref()
+            }
+        }
+    } else {
+        false
+    }
 }
 
 fn is_coin(tp: &StructType) -> bool {

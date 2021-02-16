@@ -88,6 +88,7 @@ impl<S, E, B> Events<E> for Session<'_, '_, S, E, B>
     }
 }
 
+#[derive(Debug, PartialOrd, PartialEq)]
 pub enum ResolverResult {
     Resolved(PartialVMResult<Option<Vec<u8>>>),
     Unresolved,

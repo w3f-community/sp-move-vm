@@ -7,6 +7,7 @@ use std::sync::{Arc, Mutex};
 use mvm::storage::event::EventHandler;
 use mvm::storage::store::RawData;
 use mvm::storage::bank::{Account, Balances};
+use move_core_types::identifier::Identifier;
 
 #[derive(Clone)]
 pub struct StorageMock {
@@ -130,4 +131,12 @@ impl Balances for BankMock {
 
         acc.amount = acc.amount + amount;
     }
+}
+
+pub fn addr(addr: &str) -> AccountAddress {
+    AccountAddress::from_hex_literal(addr).unwrap()
+}
+
+pub fn ident(ident: &str) -> Identifier {
+    Identifier::new(ident).unwrap()
 }

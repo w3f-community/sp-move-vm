@@ -161,7 +161,7 @@ impl VMError {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialOrd, PartialEq)]
 pub struct PartialVMError {
     major_status: StatusCode,
     sub_status: Option<u64>,
