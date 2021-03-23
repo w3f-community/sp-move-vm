@@ -35,6 +35,10 @@ where
         Ok(amt)
     }
 
+    pub fn set_position(&mut self, pos: u64) {
+        self.pos = pos;
+    }
+
     pub fn read_exact(&mut self, buf: &mut [u8]) -> Result<()> {
         let n = buf.len();
         let source = self.fill_buf();
