@@ -1,6 +1,7 @@
 use anyhow::{Error, Result};
 use core::cmp;
 
+#[derive(Debug)]
 pub struct Cursor<T>
 where
     T: AsRef<[u8]>,
