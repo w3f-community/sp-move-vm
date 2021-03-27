@@ -1,21 +1,16 @@
 // Copyright (c) The Diem Core Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-use core::str::FromStr;
+use codespan::{ByteIndex, Span};
+use move_ir_types::location::*;
+use std::str::FromStr;
 
-use crate::codespan::Span;
-use crate::location::{sp, Loc, Spanned};
 use crate::{
     errors::*,
     parser::{ast::*, lexer::*},
     shared::*,
 };
-use alloc::borrow::ToOwned;
-use alloc::boxed::Box;
-use alloc::collections::BTreeMap;
-use alloc::string::String;
-use alloc::string::ToString;
-use alloc::vec::Vec;
+use std::collections::BTreeMap;
 
 // In the informal grammar comments in this file, Comma<T> is shorthand for:
 //      (<T> ",")* <T>?
@@ -43,7 +38,10 @@ fn unexpected_token_error<'input>(tokens: &Lexer<'input>, expected: &str) -> Err
 //**************************************************************************************************
 
 pub fn make_loc(file: &'static str, start: usize, end: usize) -> Loc {
-    Loc::new(file, Span::new(start as u32, end as u32))
+    Loc::new(
+        file,
+        Span::new(ByteIndex(start as u32), ByteIndex(end as u32)),
+    )
 }
 
 fn current_token_loc<'input>(tokens: &Lexer<'input>) -> Loc {
@@ -128,8 +126,8 @@ fn parse_comma_list<'input, F, R>(
     parse_list_item: F,
     item_description: &str,
 ) -> Result<Vec<R>, Error>
-where
-    F: Fn(&mut Lexer<'input>) -> Result<R, Error>,
+    where
+        F: Fn(&mut Lexer<'input>) -> Result<R, Error>,
 {
     let start_loc = tokens.start_loc();
     consume_token(tokens, start_token)?;
@@ -153,8 +151,8 @@ fn parse_comma_list_after_start<'input, F, R>(
     parse_list_item: F,
     item_description: &str,
 ) -> Result<Vec<R>, Error>
-where
-    F: Fn(&mut Lexer<'input>) -> Result<R, Error>,
+    where
+        F: Fn(&mut Lexer<'input>) -> Result<R, Error>,
 {
     adjust_token(tokens, end_token);
     if match_token(tokens, end_token)? {
@@ -195,9 +193,9 @@ fn parse_list<'input, C, F, R>(
     mut parse_list_continue: C,
     parse_list_item: F,
 ) -> Result<Vec<R>, Error>
-where
-    C: FnMut(&mut Lexer<'input>) -> Result<bool, Error>,
-    F: Fn(&mut Lexer<'input>) -> Result<R, Error>,
+    where
+        C: FnMut(&mut Lexer<'input>) -> Result<bool, Error>,
+        F: Fn(&mut Lexer<'input>) -> Result<R, Error>,
 {
     let mut v = vec![];
     loop {
@@ -707,7 +705,7 @@ fn parse_name_exp<'input>(tokens: &mut Lexer<'input>) -> Result<Exp_, Error> {
     // assume that the "<" is a boolean operator.
     let mut tys = None;
     let start_loc = tokens.start_loc();
-    if tokens.peek() == Tok::Less && start_loc == n.loc.span().end() as usize {
+    if tokens.peek() == Tok::Less && start_loc == n.loc.span().end().to_usize() {
         let loc = make_loc(tokens.file_name(), start_loc, start_loc);
         tys = parse_optional_type_args(tokens).map_err(|mut e| {
             let msg = "Perhaps you need a blank space before this '<' operator?";
@@ -946,7 +944,7 @@ fn parse_binop_exp<'input>(
         };
         let sp_op = spanned(tokens.file_name(), op_start_loc, op_end_loc, op);
 
-        let start_loc = result.loc.span().start() as usize;
+        let start_loc = result.loc.span().start().to_usize();
         let end_loc = tokens.previous_end_loc();
         let e = Exp_::BinopExp(Box::new(result), sp_op, Box::new(rhs));
         result = spanned(tokens.file_name(), start_loc, end_loc, e);
@@ -1122,7 +1120,7 @@ fn parse_quant_cont<'input>(is_forall: bool, tokens: &mut Lexer<'input>) -> Resu
         None,
         vec![range, lambda],
     )
-    .value)
+        .value)
 }
 
 // Parse quantifier body.
@@ -2277,7 +2275,7 @@ pub fn parse_file_string(
     file: &'static str,
     input: &str,
     comment_map: BTreeMap<Span, String>,
-) -> Result<(Vec<Definition>, BTreeMap<u32, String>), Errors> {
+) -> Result<(Vec<Definition>, BTreeMap<ByteIndex, String>), Errors> {
     let mut tokens = Lexer::new(input, file, comment_map);
     match tokens.advance() {
         Err(err) => Err(vec![err]),

@@ -1,14 +1,10 @@
 // Copyright (c) The Diem Core Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-use crate::codespan::Span;
-use crate::errors::{Error, Errors};
-use crate::location::Loc;
-use crate::{parser::syntax::make_loc, FileCommentMap, MatchedFileCommentMap};
-use alloc::collections::BTreeMap;
-use alloc::string::{String, ToString};
-use alloc::vec::Vec;
-use core::fmt;
+use crate::{errors::*, parser::syntax::make_loc, FileCommentMap, MatchedFileCommentMap};
+use codespan::{ByteIndex, Span};
+use move_ir_types::location::Loc;
+use std::{collections::BTreeMap, fmt};
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Tok {
@@ -257,7 +253,7 @@ impl<'input> Lexer<'input> {
         for span in matched {
             self.doc_comments.remove(&span);
         }
-        self.matched_doc_comments.insert(end, merged);
+        self.matched_doc_comments.insert(ByteIndex(end), merged);
     }
 
     // At the end of parsing, checks whether there are any unmatched documentation comments,
@@ -275,7 +271,7 @@ impl<'input> Lexer<'input> {
             })
             .collect::<Errors>();
         if errors.is_empty() {
-            Ok(core::mem::take(&mut self.matched_doc_comments))
+            Ok(std::mem::take(&mut self.matched_doc_comments))
         } else {
             Err(errors)
         }

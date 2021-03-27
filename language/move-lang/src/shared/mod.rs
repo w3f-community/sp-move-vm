@@ -1,19 +1,20 @@
 // Copyright (c) The Diem Core Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-use crate::location::*;
 use core::{
     convert::TryFrom,
     fmt,
     hash::Hash,
     sync::atomic::{AtomicUsize, Ordering as AtomicOrdering},
 };
+use move_ir_types::location::*;
 use petgraph::{algo::astar as petgraph_astar, graphmap::DiGraphMap};
 
 pub use alloc::string::String;
 pub use alloc::vec::Vec;
 pub mod remembering_unique_map;
 pub mod unique_map;
+pub mod ast_debug;
 
 //**************************************************************************************************
 // Address

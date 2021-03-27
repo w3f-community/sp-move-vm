@@ -816,7 +816,9 @@ fn load_signatures(
     Ok(())
 }
 
-pub fn load_signature_tokens(cursor: &mut Cursor<&[u8]>) -> BinaryLoaderResult<Vec<SignatureToken>> {
+pub fn load_signature_tokens(
+    cursor: &mut Cursor<&[u8]>,
+) -> BinaryLoaderResult<Vec<SignatureToken>> {
     let len = load_signature_size(cursor)?;
     let mut tokens = vec![];
     for _ in 0..len {
@@ -826,9 +828,7 @@ pub fn load_signature_tokens(cursor: &mut Cursor<&[u8]>) -> BinaryLoaderResult<V
 }
 
 /// Deserializes a `SignatureToken`.
-pub fn load_signature_token(
-    cursor: &mut Cursor<&[u8]>,
-) -> BinaryLoaderResult<SignatureToken> {
+pub fn load_signature_token(cursor: &mut Cursor<&[u8]>) -> BinaryLoaderResult<SignatureToken> {
     // The following algorithm works by storing partially constructed types on a stack.
     //
     // Example:
