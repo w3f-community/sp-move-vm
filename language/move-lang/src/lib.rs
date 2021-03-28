@@ -22,21 +22,16 @@ pub mod shared;
 pub mod to_bytecode;
 pub mod typing;
 
-use crate::name_pool::ConstPool;
 use anyhow::anyhow;
 use codespan::{ByteIndex, Span};
 use compiled_unit::CompiledUnit;
 use errors::*;
 use move_ir_types::location::*;
-use parser::syntax::parse_file_string;
 use shared::Address;
 use std::{
-    collections::{BTreeMap, BTreeSet, HashMap},
-    fs,
-    fs::File,
-    io::{Read, Write},
+    collections::BTreeMap,
     iter::Peekable,
-    path::{Path, PathBuf},
+    path::Path,
     str::Chars,
 };
 
@@ -80,37 +75,6 @@ pub fn move_continue_up_to(pass: PassResult, until: Pass) -> Result<PassResult, 
 //**************************************************************************************************
 // Utils
 //**************************************************************************************************
-
-macro_rules! dir_path {
-    ($($dir:expr),+) => {{
-        let mut p = PathBuf::new();
-        $(p.push($dir);)+
-        p
-    }};
-}
-
-macro_rules! file_path {
-    ($dir:expr, $name:expr, $ext:expr) => {{
-        let mut p = PathBuf::from($dir);
-        p.push($name);
-        p.set_extension($ext);
-        p
-    }};
-}
-
-fn has_compiled_module_magic_number(path: &str) -> bool {
-    use move_vm::file_format_common::BinaryConstants;
-    let mut file = match File::open(path) {
-        Err(_) => return false,
-        Ok(f) => f,
-    };
-    let mut magic = [0u8; BinaryConstants::DIEM_MAGIC_SIZE];
-    let num_bytes_read = match file.read(&mut magic) {
-        Err(_) => return false,
-        Ok(n) => n,
-    };
-    num_bytes_read == BinaryConstants::DIEM_MAGIC_SIZE && magic == BinaryConstants::DIEM_MAGIC
-}
 
 pub fn path_to_string(path: &Path) -> anyhow::Result<String> {
     match path.to_str() {
@@ -200,28 +164,6 @@ fn run(cur: PassResult, until: Pass) -> Result<PassResult, Errors> {
         }
         PassResult::Compilation(_) => unreachable!("ICE Pass::Compilation is >= all passes"),
     }
-}
-
-fn check_targets_deps_dont_intersect(
-    targets: &[&'static str],
-    deps: &[&'static str],
-) -> anyhow::Result<()> {
-    let target_set = targets.iter().collect::<BTreeSet<_>>();
-    let dep_set = deps.iter().collect::<BTreeSet<_>>();
-    let intersection = target_set.intersection(&dep_set).collect::<Vec<_>>();
-    if intersection.is_empty() {
-        return Ok(());
-    }
-
-    let all_files = intersection
-        .into_iter()
-        .map(|s| format!("    {}", s))
-        .collect::<Vec<_>>()
-        .join("\n");
-    Err(anyhow!(
-        "The following files were marked as both targets and dependencies:\n{}",
-        all_files
-    ))
 }
 
 //**************************************************************************************************

@@ -848,6 +848,7 @@ dependencies = [
  "bytecode-source-map",
  "bytecode-verifier",
  "codespan",
+ "codespan-reporting",
  "hex",
  "ir-to-bytecode",
  "move-core-types",
