@@ -12,6 +12,8 @@ use petgraph::{algo::astar as petgraph_astar, graphmap::DiGraphMap};
 
 pub use alloc::string::String;
 pub use alloc::vec::Vec;
+use move_core_types::account_address::AccountAddress;
+
 pub mod remembering_unique_map;
 pub mod unique_map;
 pub mod ast_debug;
@@ -124,6 +126,12 @@ impl TryFrom<&[u8]> for Address {
             addr.copy_from_slice(bytes);
             Ok(Address(addr))
         }
+    }
+}
+
+impl From<AccountAddress> for Address {
+    fn from(addr: AccountAddress) -> Self {
+        Address::new(addr.to_u8())
     }
 }
 
